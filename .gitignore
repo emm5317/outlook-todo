@@ -1,0 +1,23 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+
+# VSTO signing key (contains private key)
+*.pfx
+
+# Build output
+*.dll
+*.pdb
+*.exe
+
+# NuGet
+packages/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+  <contextMenus>
+    <contextMenu idMso="ContextMenuMailItem">
+      <menuSeparator id="sepObsidianSingle" />
+      <button id="btnCreateTaskSingle"
+              label="Create Task in Obsidian"
+              onAction="OnCreateTask"
+              imageMso="Task" />
+    </contextMenu>
+    <contextMenu idMso="ContextMenuMultipleItems">
+      <menuSeparator id="sepObsidianMulti" />
+      <button id="btnCreateTaskMulti"
+              label="Create Tasks in Obsidian"
+              onAction="OnCreateTask"
+              imageMso="Task" />
+    </contextMenu>
+  </contextMenus>
+</customUI>
