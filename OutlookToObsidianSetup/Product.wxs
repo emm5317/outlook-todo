@@ -4,7 +4,7 @@
   <Product Id="*"
            Name="OutlookToObsidian"
            Language="1033"
-           Version="1.0.0.0"
+           Version="1.0.1.0"
            Manufacturer="OutlookToObsidian"
            UpgradeCode="7B2E5F8A-3D1C-4A9E-B6F0-1E8C2D4A5B7F">
 
@@ -23,7 +23,8 @@
                       Root="HKLM"
                       Key="SOFTWARE\Microsoft\VSTO Runtime Setup\v4R"
                       Name="Install"
-                      Type="raw" />
+                      Type="raw"
+                      Win64="no" />
     </Property>
     <Condition Message="This add-in requires the Visual Studio 2010 Tools for Office Runtime. Please download it from Microsoft.">
       <![CDATA[Installed OR VSTORUNTIME]]>
