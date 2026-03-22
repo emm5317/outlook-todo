@@ -6,19 +6,21 @@ No servers. No cloud sync. No accounts. Just a right-click menu and a local file
 
 ## What It Does
 
-- Adds a **"Create Task in Obsidian"** item to the Outlook right-click context menu (single and multi-select)
+- **Two right-click options**: instant create (one click) or detailed dialog (set due date, priority, tags, notes)
 - Appends a Markdown task to a file in your Obsidian vault using [Obsidian Tasks emoji format](https://publish.obsidian.md/tasks/Reference/Task+Formats/Tasks+Emoji+Format/):
   ```
-  - [ ] Re: Q3 Budget Review ⏫ #follow-up #project-alpha ➕ 2026-03-22
-    > From: Jane Smith (jane@example.com) | 2026-03-20 14:30
-    > First 200 characters of the email body...
-    > [entry-id:: 0000000012345ABCDE]
+  - [ ] Re: Q3 Budget Review ⏫ #follow-up #project-alpha 📅 2026-03-28 ➕ 2026-03-22
+    > **Jane Smith** | 2026-03-20 14:30 | 📎 2 | ^a3f1b2c4
+    > First 140 characters of the email body preview...
   ```
 - Maps **Outlook importance** (High/Low) to Obsidian Tasks **priority** (⏫/🔽)
 - Converts **Outlook categories** to **Obsidian #tags**
+- Shows **attachment count** (📎) when email has attachments
 - Detects **duplicates** — won't create the same task twice
+- **Toast notification** after creation — auto-closes, click to open in Obsidian
 - Prompts for vault folder on first run — no config files to edit
 - Supports **daily notes** or a single target file (configurable)
+- **Body preview** strips URLs, invisible characters, and email junk phrases
 
 ## Requirements
 
@@ -31,9 +33,17 @@ No servers. No cloud sync. No accounts. Just a right-click menu and a local file
 
 ## Recommended Obsidian Plugins
 
+**Core (required):**
 - [Tasks](https://publish.obsidian.md/tasks/) — parses due dates, priorities, recurrence, and enables task queries
-- [Dataview](https://blacksmithgu.github.io/obsidian-dataview/) — query tasks by `entry-id` or other inline fields
-- [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) — visual monthly view if using daily notes
+
+**Recommended:**
+- [Kanban](https://github.com/mgmeyers/obsidian-kanban) — drag tasks between columns (Inbox / In Progress / Waiting / Done)
+- [Reminder](https://github.com/uphy/obsidian-reminder) — desktop notifications for tasks with due dates
+- [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) — visual monthly view of tasks and daily notes
+- [Periodic Notes](https://github.com/liamcain/obsidian-periodic-notes) — weekly review templates with auto-queried task summaries
+- [Checklist](https://github.com/delashum/obsidian-checklist-plugin) — sidebar panel aggregating all open tasks
+- [Quick Add](https://github.com/chhoumann/quickadd) — hotkey to add manual tasks from within Obsidian
+- [Style Settings](https://github.com/mgmeyers/obsidian-style-settings) — UI to tweak CSS priority colors and styling
 
 ## Build
 
@@ -55,15 +65,20 @@ No servers. No cloud sync. No accounts. Just a right-click menu and a local file
 Copy the template files from `OutlookToObsidian/ObsidianVaultTemplates/` into your vault:
 
 - **Inbox.md** — landing file where tasks are appended
-- **Task Dashboard.md** — pre-built queries for open tasks, due soon, follow-ups, and completed items
+- **Task Dashboard.md** — queries for overdue, due this week, high priority, needs triage, and completed tasks
+
+A CSS snippet for color-coded priority checkboxes and visual styling is included — copy it to your vault's `.obsidian/snippets/` folder and enable it in Settings → Appearance → CSS snippets.
 
 ## Project Structure
 
 ```
 OutlookToObsidian/
-├── ContextMenuRibbon.xml      # Ribbon XML — context menu definition
-├── ContextMenuRibbon.cs       # Ribbon callback — handles right-click action
-├── TaskCreator.cs             # Core logic — markdown formatting, file I/O, dedup
+├── ContextMenuRibbon.xml      # Ribbon XML — context menu buttons (instant + detailed)
+├── ContextMenuRibbon.cs       # Ribbon callbacks — instant create, detailed dialog, toast
+├── TaskCreator.cs             # Core logic — markdown formatting, body cleaning, dedup
+├── TaskOptions.cs             # Data model for detailed dialog results
+├── TaskEntryForm.cs           # WinForms dialog — due date, priority, tags, notes
+├── ToastForm.cs               # Auto-closing toast notification with Obsidian link
 ├── ThisAddIn.cs               # Add-in entry point — wires ribbon, first-run config
 ├── Properties/
 │   └── Settings.settings      # User settings — vault path, file name, daily notes
@@ -79,6 +94,7 @@ Stored automatically in `%AppData%` (no manual editing needed):
 | Setting | Default | Description |
 |---------|---------|-------------|
 | VaultPath | *(set on first run)* | Path to your Obsidian vault |
+| VaultName | *(auto-detected)* | Vault name for Obsidian URI links |
 | TaskFileName | `Inbox.md` | File to append tasks to |
 | UseDailyNotes | `false` | Use date-based filenames instead |
 | DailyNotesFormat | `yyyy-MM-dd` | Filename format for daily notes |
