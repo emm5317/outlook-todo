@@ -11,36 +11,85 @@ namespace OutlookToObsidian
     {
         /// <summary>
         /// Builds an Obsidian Tasks-formatted markdown block from a MailItem.
+        /// Uses TaskOptions overrides if provided (from the detailed dialog).
         /// </summary>
-        public static string CreateTask(Outlook.MailItem mail)
+        public static string CreateTask(Outlook.MailItem mail, TaskOptions options = null)
         {
-            string subject = SanitizeForMarkdown(mail.Subject ?? "(no subject)");
+            string subject = options?.Subject ?? SanitizeForMarkdown(mail.Subject ?? "(no subject)");
             string senderName = mail.SenderName ?? "Unknown";
             string senderEmail = mail.SenderEmailAddress ?? "";
             string received = mail.ReceivedTime.ToString("yyyy-MM-dd HH:mm");
             string entryId = mail.EntryID;
             string today = DateTime.Now.ToString("yyyy-MM-dd");
 
-            string priority = MapPriority(mail.Importance);
-            string tags = MapCategories(mail.Categories);
-            string bodyPreview = GetBodyPreview(mail.Body, 200);
+            // Priority: use options override or auto-detect from Outlook importance
+            string priority = options?.Priority ?? MapPriority(mail.Importance);
+
+            // Tags: use options override or auto-detect from categories + default
+            string tags = options?.Tags != null
+                ? (options.Tags.Trim() + " ")
+                : ("#follow-up " + MapCategories(mail.Categories));
+
+            // Due date: from options or empty
+            string dueDate = !string.IsNullOrEmpty(options?.DueDate)
+                ? "\uD83D\uDCC5 " + options.DueDate + " "  // 📅
+                : "";
+
+            // Attachment count: from options or detect from mail
+            int attachments = options?.AttachmentCount ?? GetAttachmentCount(mail);
+
+            string bodyPreview = GetBodyPreview(mail.Body, 140);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"- [ ] {subject} {priority}#follow-up {tags}\u2795 {today}".TrimEnd());
-            sb.AppendLine($"  > From: {senderName} ({senderEmail}) | {received}");
+
+            // Task line: - [ ] subject priority tags due-date created-date
+            string taskLine = $"- [ ] {subject} {priority}{tags}{dueDate}\u2795 {today}";
+            sb.AppendLine(taskLine.TrimEnd());
+
+            // Sender line: bold name only (no email), date, optional attachment count, dedup hash
+            string idHash = GetShortHash(entryId);
+            string senderLine = $"  > **{senderName}** | {received}";
+            if (attachments > 0)
+                senderLine += $" | \uD83D\uDCCE {attachments}";  // 📎
+            senderLine += $" | ^{idHash}";
+            sb.AppendLine(senderLine);
+
+            // Body preview (cleaned of URLs, invisible chars, junk)
             if (!string.IsNullOrEmpty(bodyPreview))
             {
                 sb.AppendLine($"  > {bodyPreview}");
             }
-            sb.AppendLine($"  > [entry-id:: {entryId}]");
+
+            // User notes (from detailed dialog)
+            if (!string.IsNullOrEmpty(options?.Notes))
+            {
+                sb.AppendLine($"  > **Note:** {SanitizeForMarkdown(options.Notes)}");
+            }
+
             sb.AppendLine();
 
             return sb.ToString();
         }
 
         /// <summary>
+        /// Builds a TaskOptions pre-filled from a MailItem (for the detailed dialog).
+        /// </summary>
+        public static TaskOptions BuildDefaultOptions(Outlook.MailItem mail)
+        {
+            return new TaskOptions
+            {
+                Subject = SanitizeForMarkdown(mail.Subject ?? "(no subject)"),
+                DueDate = "",
+                Priority = MapPriority(mail.Importance),
+                Tags = "#follow-up " + MapCategories(mail.Categories).TrimEnd(),
+                Notes = "",
+                AttachmentCount = GetAttachmentCount(mail)
+            };
+        }
+
+        /// <summary>
         /// Appends markdown to the configured vault file.
-        /// Returns the resolved file path on success.
+        /// Returns the resolved file name (not full path) on success.
         /// </summary>
         public static string AppendToVault(string markdown)
         {
@@ -53,21 +102,7 @@ namespace OutlookToObsidian
                     "Obsidian vault path is not configured or does not exist. Please restart Outlook to set it up.");
             }
 
-            string fileName;
-            if (settings.UseDailyNotes)
-            {
-                string format = string.IsNullOrEmpty(settings.DailyNotesFormat)
-                    ? "yyyy-MM-dd"
-                    : settings.DailyNotesFormat;
-                fileName = DateTime.Now.ToString(format) + ".md";
-            }
-            else
-            {
-                fileName = string.IsNullOrEmpty(settings.TaskFileName)
-                    ? "Inbox.md"
-                    : settings.TaskFileName;
-            }
-
+            string fileName = GetTargetFileName();
             string targetPath = Path.Combine(vaultPath, fileName);
 
             // Create file with header if it doesn't exist
@@ -80,7 +115,7 @@ namespace OutlookToObsidian
             }
 
             File.AppendAllText(targetPath, markdown, Encoding.UTF8);
-            return targetPath;
+            return fileName;
         }
 
         /// <summary>
@@ -92,34 +127,57 @@ namespace OutlookToObsidian
             if (string.IsNullOrEmpty(settings.VaultPath))
                 return false;
 
-            string fileName;
-            if (settings.UseDailyNotes)
-            {
-                string format = string.IsNullOrEmpty(settings.DailyNotesFormat)
-                    ? "yyyy-MM-dd"
-                    : settings.DailyNotesFormat;
-                fileName = DateTime.Now.ToString(format) + ".md";
-            }
-            else
-            {
-                fileName = string.IsNullOrEmpty(settings.TaskFileName)
-                    ? "Inbox.md"
-                    : settings.TaskFileName;
-            }
-
+            string fileName = GetTargetFileName();
             string targetPath = Path.Combine(settings.VaultPath, fileName);
 
             if (!File.Exists(targetPath))
                 return false;
 
             string content = File.ReadAllText(targetPath, Encoding.UTF8);
-            return content.Contains($"[entry-id:: {entryId}]");
+            string hash = GetShortHash(entryId);
+            // Check current format (^hash), HTML comment format, and old Dataview format
+            return content.Contains($"^{hash}")
+                || content.Contains($"<!-- entry-id: {entryId} -->")
+                || content.Contains($"[entry-id:: {entryId}]");
+        }
+
+        /// <summary>
+        /// Gets the configured vault name (folder name of vault path).
+        /// </summary>
+        public static string GetVaultName()
+        {
+            var settings = Properties.Settings.Default;
+            if (!string.IsNullOrEmpty(settings.VaultName))
+                return settings.VaultName;
+
+            if (!string.IsNullOrEmpty(settings.VaultPath))
+                return new DirectoryInfo(settings.VaultPath).Name;
+
+            return "";
+        }
+
+        private static string GetTargetFileName()
+        {
+            var settings = Properties.Settings.Default;
+            if (settings.UseDailyNotes)
+            {
+                string format = string.IsNullOrEmpty(settings.DailyNotesFormat)
+                    ? "yyyy-MM-dd"
+                    : settings.DailyNotesFormat;
+                return DateTime.Now.ToString(format) + ".md";
+            }
+            else
+            {
+                return string.IsNullOrEmpty(settings.TaskFileName)
+                    ? "Inbox.md"
+                    : settings.TaskFileName;
+            }
         }
 
         /// <summary>
         /// Maps Outlook importance to Obsidian Tasks priority emoji.
         /// </summary>
-        private static string MapPriority(Outlook.OlImportance importance)
+        internal static string MapPriority(Outlook.OlImportance importance)
         {
             switch (importance)
             {
@@ -135,7 +193,7 @@ namespace OutlookToObsidian
         /// <summary>
         /// Converts Outlook categories (comma-separated) to Obsidian #tags.
         /// </summary>
-        private static string MapCategories(string categories)
+        internal static string MapCategories(string categories)
         {
             if (string.IsNullOrEmpty(categories))
                 return "";
@@ -150,15 +208,66 @@ namespace OutlookToObsidian
         }
 
         /// <summary>
-        /// Extracts a plain-text body preview, collapsing whitespace.
+        /// Creates an 8-char hash from the EntryID for compact duplicate detection.
         /// </summary>
+        private static string GetShortHash(string entryId)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(entryId));
+                // Take first 4 bytes → 8 hex chars
+                return BitConverter.ToString(bytes, 0, 4).Replace("-", "").ToLowerInvariant();
+            }
+        }
+
+        private static int GetAttachmentCount(Outlook.MailItem mail)
+        {
+            try
+            {
+                return mail.Attachments?.Count ?? 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         private static string GetBodyPreview(string body, int maxLength)
         {
             if (string.IsNullOrWhiteSpace(body))
                 return "";
 
-            // Collapse all whitespace (newlines, tabs, multiple spaces) into single spaces
-            string cleaned = Regex.Replace(body, @"\s+", " ").Trim();
+            string cleaned = body;
+
+            // Strip URLs
+            cleaned = Regex.Replace(cleaned, @"https?://\S+", "");
+
+            // Strip invisible Unicode characters (zero-width spaces, combining marks, etc.)
+            cleaned = Regex.Replace(cleaned, @"[\u034F\u200B-\u200F\u2028-\u202F\uFEFF]", "");
+
+            // Strip common email junk phrases
+            string[] junkPhrases = {
+                "View Web Version", "View in browser", "View online",
+                "Unsubscribe", "Click here", "Learn more",
+                "Having trouble viewing", "Add us to your address book"
+            };
+            foreach (var phrase in junkPhrases)
+            {
+                cleaned = Regex.Replace(cleaned, Regex.Escape(phrase), "", RegexOptions.IgnoreCase);
+            }
+
+            // Strip leading/trailing quotes
+            cleaned = cleaned.Trim('"', '\u201C', '\u201D', '\'');
+
+            // Collapse whitespace
+            cleaned = Regex.Replace(cleaned, @"\s+", " ").Trim();
+
+            // Strip markdown link artifacts like <URL> patterns
+            cleaned = Regex.Replace(cleaned, @"<[^>]*>", "");
+            cleaned = Regex.Replace(cleaned, @"\s+", " ").Trim();
+
+            if (string.IsNullOrEmpty(cleaned))
+                return "";
 
             if (cleaned.Length <= maxLength)
                 return cleaned;
@@ -166,10 +275,7 @@ namespace OutlookToObsidian
             return cleaned.Substring(0, maxLength) + "...";
         }
 
-        /// <summary>
-        /// Removes characters that would break markdown task formatting.
-        /// </summary>
-        private static string SanitizeForMarkdown(string text)
+        internal static string SanitizeForMarkdown(string text)
         {
             return text
                 .Replace("\r\n", " ")

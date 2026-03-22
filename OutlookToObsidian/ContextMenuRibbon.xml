@@ -5,15 +5,23 @@
       <menuSeparator id="sepObsidianSingle" />
       <button id="btnCreateTaskSingle"
               label="Create Task in Obsidian"
-              onAction="OnCreateTask"
+              onAction="OnCreateTaskInstant"
               imageMso="Task" />
+      <button id="btnCreateTaskDetailedSingle"
+              label="Create Task (detailed...)"
+              onAction="OnCreateTaskDetailed"
+              imageMso="TaskAccept" />
     </contextMenu>
     <contextMenu idMso="ContextMenuMultipleItems">
       <menuSeparator id="sepObsidianMulti" />
       <button id="btnCreateTaskMulti"
               label="Create Tasks in Obsidian"
-              onAction="OnCreateTask"
+              onAction="OnCreateTaskInstant"
               imageMso="Task" />
+      <button id="btnCreateTaskDetailedMulti"
+              label="Create Tasks (detailed...)"
+              onAction="OnCreateTaskDetailed"
+              imageMso="TaskAccept" />
     </contextMenu>
   </contextMenus>
 </customUI>

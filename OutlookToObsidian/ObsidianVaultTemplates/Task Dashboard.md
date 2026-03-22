@@ -1,6 +1,39 @@
 # Task Dashboard
 
-## Open Tasks
+## Overdue
+```tasks
+not done
+due before today
+sort by due
+```
+
+## Due This Week
+```tasks
+not done
+due after yesterday
+due before in 7 days
+sort by due
+group by function task.due.format("dddd", "No date")
+```
+
+## High Priority
+```tasks
+not done
+priority is above none
+sort by priority
+sort by due
+short mode
+```
+
+## Needs Triage (No Due Date)
+```tasks
+not done
+no due date
+sort by created reverse
+short mode
+```
+
+## All Open (by tag)
 ```tasks
 not done
 sort by due
@@ -8,23 +41,9 @@ group by tags
 short mode
 ```
 
-## Due Within 7 Days
-```tasks
-not done
-due before in 7 days
-sort by due
-```
-
-## Follow-ups
-```tasks
-not done
-tags include #follow-up
-sort by created reverse
-```
-
-## Completed
+## Recently Completed
 ```tasks
 done
 sort by done reverse
-limit 20
+limit 15
 ```

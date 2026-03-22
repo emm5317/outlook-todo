@@ -16,5 +16,8 @@
     <Setting Name="DailyNotesFormat" Type="System.String" Scope="User">
       <Value Profile="(Default)">yyyy-MM-dd</Value>
     </Setting>
+    <Setting Name="VaultName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

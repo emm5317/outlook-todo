@@ -70,5 +70,17 @@ namespace OutlookToObsidian.Properties {
                 this["DailyNotesFormat"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string VaultName {
+            get {
+                return ((string)(this["VaultName"]));
+            }
+            set {
+                this["VaultName"] = value;
+            }
+        }
     }
 }
