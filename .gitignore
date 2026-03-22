@@ -17,6 +17,17 @@ obj/
 # NuGet
 packages/
 
+# WiX build artifacts
+*.wixobj
+*.wixpdb
+*.msi
+
+# Distribution output
+dist/
+
+# Claude Code
+.claude/
+
 # OS
 Thumbs.db
 Desktop.ini

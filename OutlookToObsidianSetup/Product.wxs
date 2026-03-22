@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+  <Product Id="*"
+           Name="OutlookToObsidian"
+           Language="1033"
+           Version="1.0.0.0"
+           Manufacturer="OutlookToObsidian"
+           UpgradeCode="7B2E5F8A-3D1C-4A9E-B6F0-1E8C2D4A5B7F">
+
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perUser"
+             Description="Outlook VSTO Add-in that creates tasks in Obsidian"
+             Comments="Right-click emails in Classic Outlook to create Obsidian Tasks" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of OutlookToObsidian is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Check for VSTO Runtime 4.0 -->
+    <Property Id="VSTORUNTIME">
+      <RegistrySearch Id="VSTORuntimeSearch"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\VSTO Runtime Setup\v4R"
+                      Name="Install"
+                      Type="raw" />
+    </Property>
+    <Condition Message="This add-in requires the Visual Studio 2010 Tools for Office Runtime. Please download it from Microsoft.">
+      <![CDATA[Installed OR VSTORUNTIME]]>
+    </Condition>
+
+    <!-- Directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="INSTALLFOLDER" Name="OutlookToObsidian">
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <!-- Files — per-user install requires registry KeyPath -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainFiles" Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+        <RegistryValue Root="HKCU" Key="Software\OutlookToObsidian" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+        <File Id="OutlookToObsidianDll"
+              Source="..\OutlookToObsidian\bin\Release\OutlookToObsidian.dll" />
+        <File Id="OutlookToObsidianManifest"
+              Source="..\OutlookToObsidian\bin\Release\OutlookToObsidian.dll.manifest" />
+        <File Id="OutlookToObsidianVsto"
+              Source="..\OutlookToObsidian\bin\Release\OutlookToObsidian.vsto" />
+        <File Id="ToolsCommonDll"
+              Source="..\OutlookToObsidian\bin\Release\Microsoft.Office.Tools.Common.v4.0.Utilities.dll" />
+        <File Id="ToolsOutlookDll"
+              Source="..\OutlookToObsidian\bin\Release\Microsoft.Office.Tools.Outlook.v4.0.Utilities.dll" />
+        <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Feature -->
+    <Feature Id="ProductFeature" Title="OutlookToObsidian" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+
+    <!-- Custom actions: register/unregister VSTO add-in -->
+    <Property Id="VSTOINSTALLERPATH">
+      <DirectorySearch Id="VSTOInstallerSearch" Path="[CommonFilesFolder]Microsoft Shared\VSTO\10.0" Depth="0">
+        <FileSearch Name="VSTOInstaller.exe" />
+      </DirectorySearch>
+    </Property>
+
+    <CustomAction Id="InstallAddIn"
+                  Property="VSTOINSTALLERPATH"
+                  ExeCommand="/install /silent &quot;[INSTALLFOLDER]OutlookToObsidian.vsto&quot;"
+                  Execute="deferred"
+                  Return="check"
+                  Impersonate="yes" />
+
+    <CustomAction Id="UninstallAddIn"
+                  Property="VSTOINSTALLERPATH"
+                  ExeCommand="/uninstall /silent &quot;[INSTALLFOLDER]OutlookToObsidian.vsto&quot;"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="yes" />
+
+    <InstallExecuteSequence>
+      <Custom Action="InstallAddIn" After="InstallFiles">NOT Installed AND NOT REMOVE</Custom>
+      <Custom Action="UninstallAddIn" Before="RemoveFiles">REMOVE="ALL"</Custom>
+    </InstallExecuteSequence>
+
+    <!-- Minimal UI -->
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+  </Product>
+</Wix>
