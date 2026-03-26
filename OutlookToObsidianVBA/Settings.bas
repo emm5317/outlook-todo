@@ -70,16 +70,23 @@ Public Sub SetVaultName(ByVal name As String)
     SaveSetting APP_NAME, SECTION, "VaultName", name
 End Sub
 
-Public Sub PromptForVaultPath()
-    Dim fd As Office.FileDialog
-    Set fd = Application.Session.GetDefaultFolder(olFolderInbox).Application.FileDialog(msoFileDialogFolderPicker)
+Public Function PromptForVaultPath() As Boolean
+    ' Outlook VBA doesn't expose FileDialog. Use Shell32 folder picker instead.
+    Dim shell As Object
+    Set shell = CreateObject("Shell.Application")
 
-    fd.Title = "Select your Obsidian vault folder"
-    fd.ButtonName = "Select Vault"
+    Dim folder As Object
+    Set folder = shell.BrowseForFolder(0, "Select your Obsidian vault folder", &H1 + &H10, "")
 
-    If fd.Show = -1 Then
-        SetVaultPath fd.SelectedItems(1)
+    If Not folder Is Nothing Then
+        Dim path As String
+        path = folder.Self.path
+        SetVaultPath path
+        PromptForVaultPath = True
+    Else
+        PromptForVaultPath = False
     End If
 
-    Set fd = Nothing
-End Sub
+    Set folder = Nothing
+    Set shell = Nothing
+End Function
